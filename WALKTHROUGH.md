@@ -39,9 +39,7 @@ jupyter notebook
 |-----------|-------------|
 | **MoE Router** | Softmax over N experts → top-k selection. Differentiable. |
 | **Aux Loss** | Prevents collapse by penalizing uneven expert usage. |
-| **CoT Format** | `
-
-` traces are supervised: student imitates teacher reasoning. |
+| **CoT Format** | traces are supervised: student imitates teacher reasoning. |
 | **Tool Loop** | ReAct pattern: generate → parse tags → execute → inject → repeat. |
 | **Distillation** | Sequence-level KD: train student on teacher's output tokens. |
 | **Specialization** | Emergent behavior: experts develop distinct roles during training. |
