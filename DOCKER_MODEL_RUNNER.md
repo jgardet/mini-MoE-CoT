@@ -74,7 +74,7 @@ When running Mini-MoE-CoT in a Docker container, you can access the host's Docke
 environment:
   - TEACHER_BACKEND=docker_model_runner
   - TEACHER_MODEL=ai/qwen2.5:7B-Q4_K_M
-  - DOCKER_MODEL_RUNNER_URL=http://host.docker.internal:12434/engines/v1
+  - DOCKER_MODEL_RUNNER_URL=http://model-runner.docker.internal/engines/v1
 ```
 
 Then rebuild and run:
@@ -111,9 +111,9 @@ docker model list
 
 ### Connection refused from container
 
-The container needs to access the host's Model Runner. Use `host.docker.internal` as the hostname:
+The container needs to access the host's Model Runner. Use `model-runner.docker.internal` as the hostname:
 ```bash
-export DOCKER_MODEL_RUNNER_URL=http://host.docker.internal:12434/engines/v1
+export DOCKER_MODEL_RUNNER_URL=http://model-runner.docker.internal/engines/v1
 ```
 
 ### Model not found

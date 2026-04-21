@@ -12,7 +12,7 @@ services:
       # Teacher backend: "ollama" (default) or "docker_model_runner"
       - TEACHER_BACKEND=${TEACHER_BACKEND:-ollama}
       # Docker Model Runner URL (if using that backend)
-      - DOCKER_MODEL_RUNNER_URL=${DOCKER_MODEL_RUNNER_URL:-http://host.docker.internal:12434/engines/v1}
+      - DOCKER_MODEL_RUNNER_URL=${DOCKER_MODEL_RUNNER_URL:-http://model-runner.docker.internal/engines/v1}
     volumes:
       # Mount data directory for datasets
       - ./data:/app/data

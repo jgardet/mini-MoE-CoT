@@ -30,9 +30,11 @@ TEACHER_BACKEND=ollama
 TEACHER_MODEL=qwen3.5:27b
 
 # Use Docker Model Runner (Docker Desktop 4.40+)
+# From inside container: use model-runner.docker.internal
+# From host: use localhost:12434 (if TCP enabled)
 TEACHER_BACKEND=docker_model_runner
 TEACHER_MODEL=ai/qwen2.5:7B-Q4_K_M
-DOCKER_MODEL_RUNNER_URL=http://host.docker.internal:12434/engines/v1
+DOCKER_MODEL_RUNNER_URL=http://model-runner.docker.internal/engines/v1
 ```
 
 ### Device Selection
