@@ -22,7 +22,7 @@ Docker Model Runner is Docker Desktop's built-in LLM inference service (availabl
 ### 1. Enable Docker Model Runner
 
 ```bash
-docker desktop enable model-runner --tcp 12434
+docker desktop enable model-runner --tcp=12434
 ```
 
 This enables TCP access on port 12434 for host processes. From within Docker containers, use `http://model-runner.docker.internal/engines/v1`.
