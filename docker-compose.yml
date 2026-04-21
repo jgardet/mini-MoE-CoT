@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Main training/inference container
+  moe-distill:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: moe-distill
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      # Mount data directory for datasets
+      - ./data:/app/data
+      # Mount checkpoints directory for model weights
+      - ./checkpoints:/app/checkpoints
+      # Mount logs directory for TensorBoard
+      - ./logs:/app/logs
+      # Mount HuggingFace cache to avoid re-downloading models
+      - huggingface_cache:/root/.cache/huggingface
+    ports:
+      - "6006:6006"  # TensorBoard
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: tail -f /dev/null  # Keep container running for interactive use
+
+  # TensorBoard service (optional - can also run from main container)
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: moe-tensorboard
+    volumes:
+      - ./logs:/logs
+    ports:
+      - "6006:6006"
+    command: tensorboard --logdir=/logs --host=0.0.0.0
+    profiles:
+      - tensorboard  # Only start with --profile tensorboard
+
+volumes:
+  huggingface_cache:

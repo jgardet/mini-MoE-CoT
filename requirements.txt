@@ -1,0 +1,26 @@
+# Mini-MoE-CoT dependencies
+# Tested on Python 3.11+ / Windows / CUDA 12.x
+
+# --- Core ML ---
+torch>=2.3.0                  # PyTorch with CUDA 12 support
+transformers>=4.46.0          # HuggingFace: model loading, tokenizers
+accelerate>=0.30.0            # Device mapping, mixed precision
+bitsandbytes>=0.43.0          # 4-bit quantization (NF4/FP4) on Windows
+peft>=0.11.0                  # LoRA / adapter layers on frozen base
+
+# --- Training ---
+datasets>=2.20.0              # HuggingFace datasets (for data loading)
+tensorboard>=2.17.0           # Training visualization
+
+# --- Ollama client (teacher distillation) ---
+ollama>=0.2.0                 # Python client for local Ollama server
+
+# --- Utilities ---
+tqdm>=4.66.0                  # Progress bars
+rich>=13.7.0                  # Pretty terminal output / logging
+jsonlines>=4.0.0              # JSONL dataset read/write
+pydantic>=2.7.0               # Config validation
+typer>=0.12.0                 # CLI argument parsing
+
+# --- Optional: faster attention (Linux/WSL2 only) ---
+# flash-attn>=2.6.0           # Uncomment if on WSL2 with compatible CUDA
