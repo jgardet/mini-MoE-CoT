@@ -42,9 +42,11 @@ DOCKER_MODEL_RUNNER_URL=http://model-runner.docker.internal/engines/v1
 ```bash
 # GPU mode (RTX 40-series, etc.)
 DEVICE=cuda
+CUDA_VISIBLE_DEVICES=0
 
 # CPU mode (for unsupported GPUs or testing)
 DEVICE=cpu
+CUDA_VISIBLE_DEVICES=""  # Disable GPU visibility to prevent PyTorch from detecting unsupported GPUs
 ```
 
 ### Model Configuration
@@ -120,6 +122,7 @@ Currently, PyTorch stable builds don't support sm_120. Use CPU mode:
 
 ```bash
 DEVICE=cpu
+CUDA_VISIBLE_DEVICES=""  # Critical: prevents PyTorch from detecting unsupported GPU
 base_model_name=Qwen/Qwen2.5-0.5B-Instruct
 max_seq_len=1024
 hidden_size=896
@@ -133,6 +136,7 @@ TEACHER_MODEL=ai/qwen2.5:7B-Q4_K_M
 
 ```bash
 DEVICE=cpu
+CUDA_VISIBLE_DEVICES=""
 base_model_name=Qwen/Qwen2.5-0.5B-Instruct
 max_seq_len=512
 hidden_size=896

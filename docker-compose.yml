@@ -8,7 +8,7 @@ services:
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - CUDA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
       # Teacher backend: "ollama" (default) or "docker_model_runner"
       - TEACHER_BACKEND=${TEACHER_BACKEND:-ollama}
       # Docker Model Runner URL (if using that backend)
