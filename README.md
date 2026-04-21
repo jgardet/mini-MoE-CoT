@@ -80,18 +80,11 @@ python -m src.infer --prompt "What is 15% of 847, and is that more than the squa
 
 ## Docker Setup
 
-For a containerized environment with GPU support, see [DOCKER.md](DOCKER.md) for complete instructions.
+For containerized deployment with GPU support, see [DOCKER.md](DOCKER.md) for complete setup instructions and troubleshooting.
 
-Quick start with Docker:
-```bash
-# Build and start container
-docker-compose up -d
+## Interactive Walkthrough
 
-# Run commands inside container
-docker-compose exec moe-distill python -m src.distill --n_samples 2000
-docker-compose exec moe-distill python -m src.train --data data/cot_dataset.jsonl
-docker-compose exec moe-distill python -m src.infer --interactive
-```
+For hands-on learning with the interactive notebook, see [WALKTHROUGH.md](WALKTHROUGH.md). The notebook covers MoE routing, expert specialization, CoT format, tool use, distillation, and training — with visualizations and code examples you can run yourself.
 
 ## File Structure
 
@@ -99,6 +92,7 @@ docker-compose exec moe-distill python -m src.infer --interactive
 mini_moe_cot/
 ├── README.md               ← You are here
 ├── DOCKER.md               ← Docker setup instructions
+├── WALKTHROUGH.md          ← Interactive notebook guide
 ├── requirements.txt        ← All dependencies
 ├── Dockerfile              ← Container image definition
 ├── docker-compose.yml      ← Container orchestration
@@ -111,7 +105,8 @@ mini_moe_cot/
 │   ├── dataset.py          ← Dataset loading + tokenization
 │   ├── train.py            ← Training loop with CoT loss
 │   ├── tool_loop.py        ← Tool dispatcher + inference loop
-│   └── infer.py            ← CLI entry point
+│   ├── infer.py            ← CLI entry point
+│   └── walkthrough.ipynb   ← Interactive learning notebook
 ├── src/tools/
 │   ├── calculator.py       ← Math tool (safe eval)
 │   ├── search.py           ← Simulated search tool
