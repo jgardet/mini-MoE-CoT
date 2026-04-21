@@ -7,9 +7,7 @@ The `src/walkthrough.ipynb` notebook provides a hands-on, interactive learning e
 Run the notebook cells in order to explore:
 1. **MoE Routing** — How the router decides which experts to use
 2. **Expert Specialization** — Why experts diverge over training
-3. **Chain-of-Thought Format** — How `
-
-` traces are structured
+3. **Chain-of-Thought Format** — How traces are structured
 4. **Tool Use Pattern** — The ReAct loop: Think → Act → Observe
 5. **Distillation** — Calling the Ollama teacher (requires Ollama)
 6. **Training Loop** — Mini training run on toy data (requires GPU)
