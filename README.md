@@ -65,18 +65,27 @@ Loop until <answer>...</answer> emitted
 # 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Start teacher model in Ollama (separate terminal)
-ollama run qwen3.5:27b   # or: ollama run gemma4:27b
+# 2. Configure for your hardware (optional)
+# For RTX 40-series: Use defaults (GPU mode) - no .env needed
+# For Blackwell/unsupported GPUs: cp .env.blackwell .env
+# For CPU-only: cp .env.cpu .env
+cp .env.blackwell .env  # If you have a Blackwell GPU
 
-# 3. Generate distillation dataset (~1-2 hours for 2000 examples)
+# 3. Start teacher model in Ollama (separate terminal)
+ollama run qwen3.5:27b   # or: ollama run gemma4:27b
+# Or enable Docker Model Runner (see DOCKER_MODEL_RUNNER.md)
+
+# 4. Generate distillation dataset (~1-2 hours for 2000 examples)
 python -m src.distill --n_samples 2000 --output data/cot_dataset.jsonl
 
-# 4. Train the student MoE
+# 5. Train the student MoE
 python -m src.train --data data/cot_dataset.jsonl --epochs 3
 
-# 5. Run inference with tool loop
+# 6. Run inference with tool loop
 python -m src.infer --prompt "What is 15% of 847, and is that more than the square root of 100?"
 ```
+
+For detailed configuration options, see [ENV_CONFIG.md](ENV_CONFIG.md).
 
 ## Docker Setup
 
@@ -98,9 +107,7 @@ export TEACHER_BACKEND=docker_model_runner  # or "ollama" (default)
 - **RTX 40-series (sm_89)**: Fully supported with current PyTorch/CUDA
 - **Blackwell RTX PRO 2000 (sm_120)**: PyTorch stable builds do not yet support sm_120. Options:
   - Use CPU-only mode (slower)
-  - Wait for PyTorch to add sm_120 support (check PyTorch GitHub issues)
   - Use PyTorch nightly builds (unstable)
-  - On RTX 4080: Current setup works perfectly
 
 ## Interactive Walkthrough
 
@@ -113,7 +120,12 @@ mini_moe_cot/
 ├── README.md               ← You are here
 ├── DOCKER.md               ← Docker setup instructions
 ├── DOCKER_MODEL_RUNNER.md  ← Docker Model Runner teacher setup
+├── ENV_CONFIG.md           ← Environment configuration guide
 ├── WALKTHROUGH.md          ← Interactive notebook guide
+├── .env                    ← Hardware-specific configuration (copy from examples)
+├── .env.gpu                ← Example config for RTX 40-series (GPU)
+├── .env.blackwell          ← Example config for Blackwell (CPU mode)
+├── .env.cpu                ← Example config for CPU-only mode
 ├── requirements.txt        ← All dependencies
 ├── Dockerfile              ← Container image definition
 ├── docker-compose.yml      ← Container orchestration

@@ -18,18 +18,31 @@ VRAM budget breakdown (12GB card):
 
 from pydantic import BaseModel, Field
 from typing import Literal
+import os
+from pathlib import Path
+
+# Load .env file if it exists
+env_path = Path(__file__).parent.parent / ".env"
+if env_path.exists():
+    from dotenv import load_dotenv
+    load_dotenv(env_path)
 
 
 class ModelConfig(BaseModel):
     """Base LLM configuration."""
 
+    # Device: "cuda" (GPU) or "cpu" (for unsupported GPUs like Blackwell sm_120)
+    device: str = os.getenv("DEVICE", "cuda")
+
     # The frozen base model. Qwen3-4B fits 12GB with 4-bit quantization.
     # Alternative: "google/gemma-3-4b-it" (requires HF access token)
-    base_model_id: str = "Qwen/Qwen3-4B-Instruct"
+    # For CPU: Use smaller model like "Qwen/Qwen2.5-0.5B-Instruct"
+    base_model_id: str = os.getenv("base_model_name", "Qwen/Qwen3-4B-Instruct")
 
     # 4-bit quantization keeps the base model at ~3.5GB VRAM.
     # "nf4" (Normal Float 4) is best quality; "fp4" is slightly faster.
-    load_in_4bit: bool = True
+    # Disabled for CPU mode.
+    load_in_4bit: bool = os.getenv("load_in_4bit", "true").lower() == "true" and os.getenv("DEVICE", "cuda") == "cuda"
     bnb_4bit_quant_type: Literal["nf4", "fp4"] = "nf4"
 
     # Double quantization: quantize the quantization constants too.
@@ -42,7 +55,7 @@ class ModelConfig(BaseModel):
 
     # Maximum sequence length. 4096 is safe for 12GB; reduce to 2048
     # if you see OOM errors during training.
-    max_seq_len: int = 4096
+    max_seq_len: int = int(os.getenv("max_seq_len", "4096"))
 
 
 class MoEConfig(BaseModel):
@@ -50,20 +63,21 @@ class MoEConfig(BaseModel):
 
     # Number of expert FFN networks. 4 is a good start for learning:
     # enough to see routing behavior, small enough to train fast.
-    num_experts: int = 4
+    num_experts: int = int(os.getenv("num_experts", "4"))
 
     # How many experts are active per token (top-k routing).
     # top_k=2 means each token is processed by 2 out of 4 experts,
     # then their outputs are weighted and summed.
-    top_k: int = 2
+    top_k: int = int(os.getenv("top_k", "2"))
 
     # Hidden dimension of each expert FFN.
     # Matched to Qwen3-4B's hidden size (2560) for compatibility.
-    hidden_size: int = 2560
+    # Reduce for CPU mode or smaller models.
+    hidden_size: int = int(os.getenv("hidden_size", "2560"))
 
     # Intermediate size inside each expert (typically 4x hidden_size,
     # but we reduce it since we have multiple experts).
-    intermediate_size: int = 5120
+    intermediate_size: int = int(os.getenv("intermediate_size", "5120"))
 
     # Expert dropout during training (prevents over-reliance on one expert).
     expert_dropout: float = 0.1
@@ -107,17 +121,17 @@ class TrainingConfig(BaseModel):
     """Training hyperparameters."""
 
     # Training epochs. 3 epochs on 2000 samples takes ~2-3 hours on 12GB.
-    num_epochs: int = 3
+    num_epochs: int = int(os.getenv("epochs", "3"))
 
     # Batch size. Keep at 1 with gradient accumulation for 12GB safety.
-    per_device_train_batch_size: int = 1
+    per_device_train_batch_size: int = int(os.getenv("batch_size", "1"))
 
     # Simulate larger batch size by accumulating gradients.
     # Effective batch = 1 * 8 = 8.
     gradient_accumulation_steps: int = 8
 
     # Peak learning rate for cosine schedule.
-    learning_rate: float = 2e-4
+    learning_rate: float = float(os.getenv("learning_rate", "2e-4"))
 
     # Warmup steps (helps stability at start of training).
     warmup_steps: int = 50
@@ -142,38 +156,38 @@ class TrainingConfig(BaseModel):
 
     # Use gradient checkpointing to trade compute for memory.
     # Saves ~2GB VRAM at cost of ~30% slower training. Recommended.
-    gradient_checkpointing: bool = True
+    gradient_checkpointing: bool = os.getenv("gradient_checkpointing", "true").lower() == "true"
 
     # Mixed precision. "bf16" is best for Ampere+ (RTX 3000+).
     # Use "fp16" for older cards, "no" to disable.
-    bf16: bool = True
+    # Disabled for CPU mode.
+    bf16: bool = os.getenv("DEVICE", "cuda") == "cuda"
     fp16: bool = False
 
 
 class DistillConfig(BaseModel):
-    """Data distillation from Ollama teacher configuration."""
+    """Data distillation from teacher model configuration."""
 
-    # Teacher model name as known to Ollama.
-    # Run: `ollama list` to see what you have installed.
-    # Recommended: "qwen3.5:27b" (best quality) or "gemma4:27b"
-    # Budget option: "qwen3.5:7b" or "gemma4:12b"
-    teacher_model: str = "qwen3.5:27b"
+    # Teacher model name (Ollama or Docker Model Runner format).
+    # Ollama: "qwen3.5:27b" or "gemma4:27b"
+    # Docker Model Runner: "ai/qwen2.5:7B-Q4_K_M"
+    teacher_model: str = os.getenv("TEACHER_MODEL", "qwen3.5:27b")
 
     # Ollama server address (default local).
     ollama_host: str = "http://localhost:11434"
 
     # Number of training examples to generate.
     # 2000 is enough for a meaningful demo. 5000+ for real learning.
-    n_samples: int = 2000
+    n_samples: int = int(os.getenv("distill_n_samples", "2000"))
 
     # Output path for the JSONL dataset.
     output_path: str = "data/cot_dataset.jsonl"
 
     # Temperature for teacher sampling. Higher = more diverse traces.
-    temperature: float = 0.7
+    temperature: float = float(os.getenv("distill_temperature", "0.7"))
 
     # Maximum tokens for teacher response (CoT traces can be long).
-    max_tokens: int = 2048
+    max_tokens: int = int(os.getenv("distill_max_tokens", "2048"))
 
     # Whether to include tool-use examples (vs pure CoT).
     include_tool_examples: bool = True
