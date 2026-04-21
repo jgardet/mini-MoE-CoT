@@ -334,10 +334,12 @@ def train(data_path: str):
     """
     # ── Setup ────────────────────────────────────────────────────────────
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    vram_str = ""
+    if torch.cuda.is_available():
+        vram_str = f"{torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB (if CUDA)\n"
     console.print(Panel(
         f"[bold]Device:[/] {device}\n"
-        f"[bold]VRAM:[/] {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB "
-        f"(if CUDA)\n"
+        f"[bold]VRAM:[/] {vram_str}"
         f"[bold]Data:[/] {data_path}\n"
         f"[bold]Epochs:[/] {CFG.training.num_epochs}\n"
         f"[bold]Grad accum:[/] {CFG.training.gradient_accumulation_steps} "
