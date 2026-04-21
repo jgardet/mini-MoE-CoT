@@ -82,6 +82,26 @@ python -m src.infer --prompt "What is 15% of 847, and is that more than the squa
 
 For containerized deployment with GPU support, see [DOCKER.md](DOCKER.md) for complete setup instructions and troubleshooting.
 
+## Teacher Model Options
+
+For distillation, you can use either:
+- **Ollama** (default) - Local LLM server, see Quick Start above
+- **Docker Model Runner** - Built into Docker Desktop 4.40+, see [DOCKER_MODEL_RUNNER.md](DOCKER_MODEL_RUNNER.md)
+
+Set via environment variable:
+```bash
+export TEACHER_BACKEND=docker_model_runner  # or "ollama" (default)
+```
+
+## GPU Compatibility Notes
+
+- **RTX 40-series (sm_89)**: Fully supported with current PyTorch/CUDA
+- **Blackwell RTX PRO 2000 (sm_120)**: PyTorch stable builds do not yet support sm_120. Options:
+  - Use CPU-only mode (slower)
+  - Wait for PyTorch to add sm_120 support (check PyTorch GitHub issues)
+  - Use PyTorch nightly builds (unstable)
+  - On RTX 4080: Current setup works perfectly
+
 ## Interactive Walkthrough
 
 For hands-on learning with the interactive notebook, see [WALKTHROUGH.md](WALKTHROUGH.md). The notebook covers MoE routing, expert specialization, CoT format, tool use, distillation, and training — with visualizations and code examples you can run yourself.
@@ -92,6 +112,7 @@ For hands-on learning with the interactive notebook, see [WALKTHROUGH.md](WALKTH
 mini_moe_cot/
 ├── README.md               ← You are here
 ├── DOCKER.md               ← Docker setup instructions
+├── DOCKER_MODEL_RUNNER.md  ← Docker Model Runner teacher setup
 ├── WALKTHROUGH.md          ← Interactive notebook guide
 ├── requirements.txt        ← All dependencies
 ├── Dockerfile              ← Container image definition
@@ -101,7 +122,7 @@ mini_moe_cot/
 │   ├── config.py           ← Central config (VRAM budgets, hyperparams)
 │   ├── moe_layer.py        ← MoE implementation (router + experts)
 │   ├── model.py            ← Full model: base LLM + MoE head
-│   ├── distill.py          ← Data generation via Ollama teacher
+│   ├── distill.py          ← Data generation via teacher (Ollama/Docker Model Runner)
 │   ├── dataset.py          ← Dataset loading + tokenization
 │   ├── train.py            ← Training loop with CoT loss
 │   ├── tool_loop.py        ← Tool dispatcher + inference loop

@@ -1,5 +1,12 @@
 """
-distill.py — Generate training data by distilling from a local Ollama teacher.
+distill.py — Generate training data by distilling from a teacher model.
+
+Teacher backends supported:
+  - Ollama (default): Local LLM server
+  - Docker Model Runner: Built into Docker Desktop 4.40+
+
+Set via environment variable:
+  export TEACHER_BACKEND=docker_model_runner  # or "ollama" (default)
 
 Distillation strategy:
   The teacher (large model, e.g. Qwen3.5:27b) generates high-quality
@@ -36,11 +43,18 @@ from typing import Generator
 from tqdm import tqdm
 from rich.console import Console
 import ollama as ollama_client
+import os
 
 from .config import CFG
 from .tool_loop import build_system_prompt
 
 console = Console()
+
+
+# ── Teacher Backend Selection ─────────────────────────────────────────────
+
+TEACHER_BACKEND = os.getenv("TEACHER_BACKEND", "ollama")  # Options: "ollama", "docker_model_runner"
+DOCKER_MODEL_RUNNER_URL = os.getenv("DOCKER_MODEL_RUNNER_URL", "http://model-runner.docker.internal/engines/v1")
 
 
 # ── Question templates ─────────────────────────────────────────────────────
@@ -170,6 +184,53 @@ def build_teacher_prompt(question: str, include_tools: bool) -> str:
     return f"{system}\n\n{instruction}\n\nQuestion: {question}"
 
 
+def generate_with_docker_model_runner(
+    question: str,
+    include_tools: bool,
+    teacher_model: str,
+    temperature: float,
+    max_tokens: int,
+) -> str | None:
+    """Call Docker Model Runner (OpenAI-compatible API) to generate a CoT response.
+
+    Args:
+        question: The question to answer.
+        include_tools: Whether to allow tool calls in the response.
+        teacher_model: Docker Model Runner model name (e.g., "ai/qwen2.5:7B-Q4_K_M").
+        temperature: Sampling temperature.
+        max_tokens: Max response tokens.
+
+    Returns:
+        Teacher's response string, or None if the call fails.
+    """
+    import requests
+
+    prompt = build_teacher_prompt(question, include_tools)
+
+    try:
+        response = requests.post(
+            f"{DOCKER_MODEL_RUNNER_URL}/chat/completions",
+            json={
+                "model": teacher_model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stop": ["</answer>"],
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        text = response.json()["choices"][0]["message"]["content"]
+        # Ensure answer tag is closed
+        if "<answer>" in text and "</answer>" not in text:
+            text += "</answer>"
+        return text
+
+    except Exception as e:
+        console.print(f"[red]Docker Model Runner call failed: {e}[/]")
+        return None
+
+
 def generate_with_teacher(
     question: str,
     include_tools: bool,
@@ -177,39 +238,48 @@ def generate_with_teacher(
     temperature: float,
     max_tokens: int,
 ) -> str | None:
-    """Call the Ollama teacher to generate a CoT response.
+    """Call the teacher backend to generate a CoT response.
+
+    Uses either Ollama or Docker Model Runner based on TEACHER_BACKEND env var.
 
     Args:
         question: The question to answer.
         include_tools: Whether to allow tool calls in the response.
-        teacher_model: Ollama model name.
+        teacher_model: Model name (Ollama or Docker Model Runner format).
         temperature: Sampling temperature.
         max_tokens: Max response tokens.
 
     Returns:
         Teacher's response string, or None if the call fails.
     """
-    prompt = build_teacher_prompt(question, include_tools)
-
-    try:
-        response = ollama_client.generate(
-            model=teacher_model,
-            prompt=prompt,
-            options={
-                "temperature": temperature,
-                "num_predict": max_tokens,
-                "stop": ["</answer>"],  # Stop after the answer tag
-            },
+    if TEACHER_BACKEND == "docker_model_runner":
+        console.print(f"[cyan]Using Docker Model Runner: {teacher_model}[/]")
+        return generate_with_docker_model_runner(
+            question, include_tools, teacher_model, temperature, max_tokens
         )
-        text = response["response"]
-        # Ensure answer tag is closed
-        if "<answer>" in text and "</answer>" not in text:
-            text += "</answer>"
-        return text
+    else:  # Default to Ollama
+        console.print(f"[cyan]Using Ollama: {teacher_model}[/]")
+        prompt = build_teacher_prompt(question, include_tools)
 
-    except Exception as e:
-        console.print(f"[red]Teacher call failed: {e}[/]")
-        return None
+        try:
+            response = ollama_client.generate(
+                model=teacher_model,
+                prompt=prompt,
+                options={
+                    "temperature": temperature,
+                    "num_predict": max_tokens,
+                    "stop": ["</answer>"],  # Stop after the answer tag
+                },
+            )
+            text = response["response"]
+            # Ensure answer tag is closed
+            if "<answer>" in text and "</answer>" not in text:
+                text += "</answer>"
+            return text
+
+        except Exception as e:
+            console.print(f"[red]Teacher call failed: {e}[/]")
+            return None
 
 
 def validate_response(response: str, include_tools: bool) -> bool:
