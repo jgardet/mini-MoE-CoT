@@ -89,12 +89,19 @@ def load_base_model_and_tokenizer():
     # --- Load model ---
     # Use float32 on CPU, bfloat16 on CUDA
     model_dtype = torch.float32 if CFG.model.device == "cpu" else getattr(torch, CFG.model.bnb_4bit_compute_dtype)
+    
+    # Only pass quantization_config if actually using 4-bit
+    load_kwargs = {
+        "device_map": "auto",
+        "trust_remote_code": True,
+        "torch_dtype": model_dtype,
+    }
+    if CFG.model.load_in_4bit:
+        load_kwargs["quantization_config"] = bnb_config
+    
     base_model = AutoModelForCausalLM.from_pretrained(
         CFG.model.base_model_id,
-        quantization_config=bnb_config,
-        device_map="auto",          # Auto-places layers on GPU/CPU
-        trust_remote_code=True,
-        torch_dtype=model_dtype,
+        **load_kwargs
     )
 
     # Required before applying LoRA to a quantized model.
@@ -146,8 +153,10 @@ class MiniMoEStudent(nn.Module):
         self.base_model = base_model
         self.tokenizer = tokenizer
 
-        # The MoE layer is fully trainable (FP16/BF16)
+        # The MoE layer is fully trainable
         # It matches the base model's hidden size
+        # Use float32 on CPU, bfloat16 on CUDA
+        moe_dtype = torch.float32 if CFG.model.device == "cpu" else torch.bfloat16
         self.moe_layer = MoELayer(
             hidden_size=CFG.moe.hidden_size,
             intermediate_size=CFG.moe.intermediate_size,
@@ -155,7 +164,7 @@ class MiniMoEStudent(nn.Module):
             top_k=CFG.moe.top_k,
             aux_loss_coef=CFG.moe.aux_loss_coef,
             expert_dropout=CFG.moe.expert_dropout,
-        ).to(dtype=torch.bfloat16)
+        ).to(dtype=moe_dtype)
 
         # Move MoE to the same device as the base model
         device = next(base_model.parameters()).device
