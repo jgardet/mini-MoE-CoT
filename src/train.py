@@ -142,6 +142,7 @@ def train_epoch(
     epoch: int,
     global_step: int,
     device: torch.device,
+    use_amp: bool,
 ) -> tuple[float, float, int]:
     """Run one full training epoch.
 
@@ -178,8 +179,21 @@ def train_epoch(
         labels = batch["labels"].to(device)
 
         # AMP (Automatic Mixed Precision): computes in bf16, accumulates in fp32
-        # This saves ~40% memory vs full fp32 training.
-        with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+        # This saves ~40% memory vs full fp32 training (CUDA only)
+        if use_amp:
+            with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                output = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    labels=labels,
+                )
+                loss = output["loss"]
+                aux_loss = output["aux_loss"]
+
+                # Scale loss for gradient accumulation
+                # (gradients are summed, so we divide to get the mean)
+                loss_scaled = loss / accumulation_steps
+        else:
             output = model(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -187,13 +201,13 @@ def train_epoch(
             )
             loss = output["loss"]
             aux_loss = output["aux_loss"]
-
-            # Scale loss for gradient accumulation
-            # (gradients are summed, so we divide to get the mean)
             loss_scaled = loss / accumulation_steps
 
         # Backward pass with gradient scaling (for numerical stability with bf16)
-        scaler.scale(loss_scaled).backward()
+        if use_amp:
+            scaler.scale(loss_scaled).backward()
+        else:
+            loss_scaled.backward()
 
         total_lm_loss += (loss.item() - aux_loss.item())
         total_aux_loss += aux_loss.item()
@@ -201,8 +215,9 @@ def train_epoch(
 
         # Perform optimizer step every `accumulation_steps` micro-batches
         if (batch_idx + 1) % accumulation_steps == 0:
-            # Unscale gradients before clipping
-            scaler.unscale_(optimizer)
+            # Unscale gradients before clipping (only with AMP)
+            if use_amp:
+                scaler.unscale_(optimizer)
 
             # Gradient clipping: prevents exploding gradients
             torch.nn.utils.clip_grad_norm_(
@@ -211,8 +226,11 @@ def train_epoch(
             )
 
             # Optimizer step + scheduler step
-            scaler.step(optimizer)
-            scaler.update()
+            if use_amp:
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                optimizer.step()
             scheduler.step()
             optimizer.zero_grad()
 
@@ -364,8 +382,9 @@ def train(data_path: str):
     optimizer = build_optimizer(model)
     scheduler = build_scheduler(optimizer, total_steps)
 
-    # AMP gradient scaler
-    scaler = torch.cuda.amp.GradScaler(enabled=CFG.training.bf16 or CFG.training.fp16)
+    # AMP gradient scaler (only for CUDA)
+    use_amp = torch.cuda.is_available() and (CFG.training.bf16 or CFG.training.fp16)
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
     # TensorBoard writer
     writer = SummaryWriter(log_dir=CFG.training.logging_dir)
@@ -387,6 +406,7 @@ def train(data_path: str):
             epoch=epoch,
             global_step=global_step,
             device=device,
+            use_amp=use_amp,
         )
 
         # Evaluate
