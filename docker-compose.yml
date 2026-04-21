@@ -10,32 +10,25 @@ services:
       - .env
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
-      # Device configuration
-      - DEVICE=${DEVICE:-cuda}
-      # Model configuration
-      - base_model_name=${base_model_name:-Qwen/Qwen3-4B-Instruct}
-      - load_in_4bit=${load_in_4bit:-true}
-      - max_seq_len=${max_seq_len:-4096}
-      # MoE configuration
-      - num_experts=${num_experts:-4}
-      - top_k=${top_k:-2}
-      - hidden_size=${hidden_size:-2560}
-      - intermediate_size=${intermediate_size:-5120}
-      # Training configuration
-      - epochs=${epochs:-3}
-      - batch_size=${batch_size:-1}
-      - learning_rate=${learning_rate:-2e-4}
-      - gradient_checkpointing=${gradient_checkpointing:-true}
-      # Teacher backend: "ollama" (default) or "docker_model_runner"
-      - TEACHER_BACKEND=${TEACHER_BACKEND:-ollama}
-      - TEACHER_MODEL=${TEACHER_MODEL:-qwen3.5:27b}
-      # Docker Model Runner URL (if using that backend)
-      - DOCKER_MODEL_RUNNER_URL=${DOCKER_MODEL_RUNNER_URL:-http://model-runner.docker.internal/engines/v1}
-      # Distillation configuration
-      - distill_n_samples=${distill_n_samples:-2000}
-      - distill_temperature=${distill_temperature:-0.7}
-      - distill_max_tokens=${distill_max_tokens:-2048}
+      - CUDA_VISIBLE_DEVICES
+      - DEVICE
+      - base_model_name
+      - load_in_4bit
+      - max_seq_len
+      - num_experts
+      - top_k
+      - hidden_size
+      - intermediate_size
+      - epochs
+      - batch_size
+      - learning_rate
+      - gradient_checkpointing
+      - TEACHER_BACKEND
+      - TEACHER_MODEL
+      - DOCKER_MODEL_RUNNER_URL
+      - distill_n_samples
+      - distill_temperature
+      - distill_max_tokens
     volumes:
       # Mount .env file for configuration
       - ./.env:/app/.env
