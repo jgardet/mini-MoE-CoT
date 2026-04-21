@@ -7,43 +7,39 @@ Chain-of-Thought supervision and multi-step tool use.
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  PHASE 1: DATA DISTILLATION                                         │
-│                                                                     │
-│  Teacher (Ollama)           →   Synthetic Dataset                   │
-│  Gemma4:27b or Qwen3.5:27b      CoT traces + tool call sequences   │
-│                                 stored as JSONL                     │
-└─────────────────────────────┬───────────────────────────────────────┘
-                              │
-┌─────────────────────────────▼───────────────────────────────────────┐
-│  PHASE 2: STUDENT MODEL (Mini-MoE)                                  │
-│                                                                     │
-│  Base: Qwen3-4B (fits in ~5GB VRAM at 4-bit)                       │
-│                                                                     │
-│  Added MoE FFN layer on top of frozen base:                         │
-│  ┌──────────────┐   ┌─────────────────────────────────────────┐    │
-│  │   Router     │   │  Expert Pool (N=4, top-k=2 active)      │    │
-│  │  (learned)   │──▶│  Expert 0: Reasoning / Math             │    │
-│  │              │   │  Expert 1: Tool Planning                 │    │
-│  └──────────────┘   │  Expert 2: Synthesis / Summary          │    │
-│                     │  Expert 3: World Knowledge               │    │
-│                     └─────────────────────────────────────────┘    │
-│                                          │                          │
-│                              ┌───────────▼────────────┐            │
-│                              │  CoT Head               │            │
-│                              │  Generates <think>...</think>        │
-│                              │  before final answer    │            │
-│                              └───────────┬────────────┘            │
-└──────────────────────────────────────────┼──────────────────────────┘
-                                           │
-┌──────────────────────────────────────────▼──────────────────────────┐
-│  PHASE 3: TOOL USE LOOP (at inference)                              │
-│                                                                     │
-│  Student generates → <tool>calc(3+4)</tool> → ToolDispatcher        │
-│  ToolDispatcher executes → returns result                           │
-│  Result injected into context → Student continues reasoning         │
-│  Loop until <answer>...</answer> emitted                            │
-└─────────────────────────────────────────────────────────────────────┘
+PHASE 1: DATA DISTILLATION
+─────────────────────────────────────────────────────
+Teacher (Ollama) → Synthetic Dataset
+Gemma4:27b or Qwen3.5:27b
+    ↓
+CoT traces + tool call sequences → JSONL format
+
+─────────────────────────────────────────────────────
+
+PHASE 2: STUDENT MODEL (Mini-MoE)
+─────────────────────────────────────────────────────
+Base: Qwen3-4B (4-bit quantized, ~5GB VRAM)
+    ↓
+MoE FFN Layer (on frozen base):
+    Router (learned) → Expert Pool (N=4, top-k=2)
+    ├─ Expert 0: Reasoning / Math
+    ├─ Expert 1: Tool Planning
+    ├─ Expert 2: Synthesis / Summary
+    └─ Expert 3: World Knowledge
+    ↓
+CoT Head (generates reasoning before answer)
+
+─────────────────────────────────────────────────────
+
+PHASE 3: TOOL USE LOOP (inference)
+─────────────────────────────────────────────────────
+Student generates → <tool>calc(3+4)</tool>
+    ↓
+ToolDispatcher executes → returns result
+    ↓
+Result injected → Student continues reasoning
+    ↓
+Loop until <answer>...</answer> emitted
 ```
 
 ## Key Concepts Demonstrated
@@ -82,12 +78,31 @@ python -m src.train --data data/cot_dataset.jsonl --epochs 3
 python -m src.infer --prompt "What is 15% of 847, and is that more than the square root of 100?"
 ```
 
+## Docker Setup
+
+For a containerized environment with GPU support, see [DOCKER.md](DOCKER.md) for complete instructions.
+
+Quick start with Docker:
+```bash
+# Build and start container
+docker-compose up -d
+
+# Run commands inside container
+docker-compose exec moe-distill python -m src.distill --n_samples 2000
+docker-compose exec moe-distill python -m src.train --data data/cot_dataset.jsonl
+docker-compose exec moe-distill python -m src.infer --interactive
+```
+
 ## File Structure
 
 ```
 mini_moe_cot/
 ├── README.md               ← You are here
+├── DOCKER.md               ← Docker setup instructions
 ├── requirements.txt        ← All dependencies
+├── Dockerfile              ← Container image definition
+├── docker-compose.yml      ← Container orchestration
+├── setup_windows.py        ← Windows setup validation
 ├── src/
 │   ├── config.py           ← Central config (VRAM budgets, hyperparams)
 │   ├── moe_layer.py        ← MoE implementation (router + experts)
@@ -97,7 +112,7 @@ mini_moe_cot/
 │   ├── train.py            ← Training loop with CoT loss
 │   ├── tool_loop.py        ← Tool dispatcher + inference loop
 │   └── infer.py            ← CLI entry point
-├── tools/
+├── src/tools/
 │   ├── calculator.py       ← Math tool (safe eval)
 │   ├── search.py           ← Simulated search tool
 │   └── datetime_tool.py    ← Date/time tool
