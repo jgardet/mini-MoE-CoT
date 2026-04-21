@@ -58,10 +58,12 @@ def load_base_model_and_tokenizer():
         model: PEFT-wrapped base model (LoRA adapters trainable, base frozen)
         tokenizer: Corresponding tokenizer
     """
+    quant_status = "4-bit NF4 + double quant" if CFG.model.load_in_4bit else "None (full precision)"
+    vram_estimate = "~3.5 GB" if CFG.model.load_in_4bit else "~2 GB (CPU mode)"
     console.print(Panel(
         f"[bold cyan]Loading base model:[/] {CFG.model.base_model_id}\n"
-        f"[bold cyan]Quantization:[/] 4-bit NF4 + double quant\n"
-        f"[bold cyan]Estimated VRAM:[/] ~3.5 GB",
+        f"[bold cyan]Quantization:[/] {quant_status}\n"
+        f"[bold cyan]Estimated VRAM:[/] {vram_estimate}",
         title="📦 Model Loading",
         border_style="cyan"
     ))
@@ -85,20 +87,24 @@ def load_base_model_and_tokenizer():
         tokenizer.pad_token = tokenizer.eos_token
 
     # --- Load model ---
+    # Use float32 on CPU, bfloat16 on CUDA
+    model_dtype = torch.float32 if CFG.model.device == "cpu" else getattr(torch, CFG.model.bnb_4bit_compute_dtype)
     base_model = AutoModelForCausalLM.from_pretrained(
         CFG.model.base_model_id,
         quantization_config=bnb_config,
         device_map="auto",          # Auto-places layers on GPU/CPU
         trust_remote_code=True,
-        torch_dtype=getattr(torch, CFG.model.bnb_4bit_compute_dtype),
+        torch_dtype=model_dtype,
     )
 
     # Required before applying LoRA to a quantized model.
     # This casts layer norms to fp32 and enables gradient checkpointing properly.
-    base_model = prepare_model_for_kbit_training(
-        base_model,
-        use_gradient_checkpointing=CFG.training.gradient_checkpointing,
-    )
+    # Only needed when using quantization.
+    if CFG.model.load_in_4bit:
+        base_model = prepare_model_for_kbit_training(
+            base_model,
+            use_gradient_checkpointing=CFG.training.gradient_checkpointing,
+        )
 
     # --- Apply LoRA adapters ---
     lora_config = LoraConfig(
