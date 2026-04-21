@@ -92,10 +92,16 @@ def load_base_model_and_tokenizer():
     
     # Only pass quantization_config if actually using 4-bit
     load_kwargs = {
-        "device_map": "auto",
         "trust_remote_code": True,
         "torch_dtype": model_dtype,
     }
+    
+    # Set device_map based on mode
+    if CFG.model.device == "cpu":
+        load_kwargs["device_map"] = "cpu"
+    else:
+        load_kwargs["device_map"] = "auto"
+    
     if CFG.model.load_in_4bit:
         load_kwargs["quantization_config"] = bnb_config
     
