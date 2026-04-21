@@ -46,7 +46,7 @@ docker exec -it moe-distill bash
 
 #### Run Setup Validation
 ```bash
-docker-compose exec moe-distill python src/setup_windows.py
+docker-compose exec moe-distill python setup_windows.py
 ```
 
 #### Generate Training Data

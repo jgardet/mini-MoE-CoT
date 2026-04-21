@@ -43,6 +43,7 @@ WORKDIR /app
 
 # Copy project files
 COPY src/ /app/src/
+COPY setup_windows.py /app/
 COPY README.md /app/
 COPY requirements.txt /app/
 
