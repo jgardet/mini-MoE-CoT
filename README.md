@@ -59,6 +59,8 @@ Loop until <answer>...</answer> emitted
 - RAM: 16GB+ recommended
 - Disk: ~15GB (model weights + dataset)
 
+**Note:** CPU-only mode is supported but **strongly discouraged** due to extremely slow training performance (10-100x slower than GPU). Use CPU mode only for testing or if you have no GPU access.
+
 ## Quick Start
 
 ```bash

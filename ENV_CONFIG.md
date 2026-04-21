@@ -137,6 +137,8 @@ TEACHER_MODEL=ai/qwen2.5:7B-Q4_K_M
 
 ### CPU-Only Mode
 
+**⚠️ Warning:** CPU-only mode is strongly discouraged due to extremely slow training performance (10-100x slower than GPU). Use only for testing or if you have no GPU access.
+
 ```bash
 DOCKER_RUNTIME=""
 DEVICE=cpu

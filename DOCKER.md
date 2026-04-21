@@ -14,7 +14,7 @@ This project can be run entirely in Docker, which is useful when:
 **GPU Compatibility Note:**
 - RTX 40-series (sm_89): Fully supported
 - Blackwell RTX PRO 2000 (sm_120): PyTorch in this Dockerfile does not yet support sm_120. Consider:
-  - Using CPU-only mode (slower)
+  - **⚠️ CPU-only mode (strongly discouraged):** 10-100x slower than GPU, only for testing
   - Waiting for PyTorch stable release with sm_120 support
   - Using PyTorch nightly builds (unstable)
   - Running on RTX 4080 instead where supported
