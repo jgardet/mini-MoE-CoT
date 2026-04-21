@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: moe-distill
-    runtime: nvidia
+    runtime: ${DOCKER_RUNTIME:-nvidia}
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
